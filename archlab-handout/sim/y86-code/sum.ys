@@ -1,0 +1,32 @@
+
+
+irmovq stack, %rsp
+call main
+halt
+.align 8
+ele1:
+    .quad 0x00a
+    .quad ele2
+ele2:
+    .quad 0x0b0
+    .quad ele3
+ele3:
+    .quad 0xc00
+    .quad 0
+main:
+    irmovq 0, %rdi  
+    irmovq ele1, %rax #ptr
+    irmovq 8, %rsi #4 constant
+jmp test
+loop:
+    mrmovq (%rax), %rcx #temp holder for ptr val
+    addq %rcx, %rdi #add to sum
+    addq %rsi, %rax #increment by 4 (aka get the ptr in struct)
+    mrmovq (%rax), %rax #read value of ptr and place into self (ptr = ptr->next)
+test: 
+    andq %rax, %rax
+    jne loop
+    ret
+
+.pos 0xF00
+stack:

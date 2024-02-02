@@ -1,0 +1,268 @@
+#/* $begin ncopy-ys */
+##################################################################
+# ncopy.ys - Copy a src block of len words to dst.
+# Return the number of positive words (>0) contained in src.
+#
+# Include your name and ID here.
+#
+# Describe how and why you modified the baseline code.
+# Adding IIADDQ
+# Loop unroll 8x1 to reduce overhead
+# Jumptable at end
+##################################################################
+# Do not modify this portion
+# Function prologue.
+# %rdi = src, %rsi = dst, %rdx = len
+ncopy:
+
+##################################################################
+# You can modify this portion
+	# Loop header
+	xorq %rax,%rax		# count = 0;
+	# len was 9, limit = 6, endL = 3; (in case of 4x1 loop unroll)
+	iaddq -7, %rdx		# limit = len-3, prep for loop unroll
+	andq %rdx,%rdx		# limit <= 0?
+	jle LastElements  #if limit is -2,-1,0 means there was 1,2,3 elements respectively in list, if -3, no elements in list
+	
+
+Loop:	
+	mrmovq (%rdi), %r8	# read val from src...
+	mrmovq 8(%rdi), %r9	# read val from src...
+	mrmovq 16(%rdi), %r10	# read val from src...
+	mrmovq 24(%rdi), %r11	# read val from src...
+	mrmovq 32(%rdi), %r12	# read val from src...
+	mrmovq 40(%rdi), %r13	# read val from src...
+	mrmovq 48(%rdi), %r14	# read val from src...
+	mrmovq 56(%rdi), %rbx	# read val from src...
+
+	iaddq 64, %rdi		# src++
+	iaddq -8, %rdx		# len--
+	rmmovq %r8, (%rsi)	# ...and store it to dst
+	rmmovq %r9, 8(%rsi)# ...and store it to dst
+	rmmovq %r10, 16(%rsi)# ...and store it to dst
+	rmmovq %r11, 24(%rsi)# ...and store it to dst
+	rmmovq %r12, 32(%rsi)# ...and store it to dst
+	rmmovq %r13, 40(%rsi)# ...and store it to dst
+	rmmovq %r14, 48(%rsi)# ...and store it to dst
+	rmmovq %rbx, 56(%rsi)# ...and store it to dst
+	iaddq 64, %rsi		# dst++
+	andq %r8, %r8		# val <= 0?
+	jle EleTwoCheck		# if so, goto Npos: 
+	iaddq 1, %rax		# count++ #conditional addq?
+EleTwoCheck:	
+	andq %r9, %r9		# val <= 0?
+	jle EleThreeCheck
+	iaddq 1, %rax		# count++ #conditional addq?
+EleThreeCheck:	
+	andq %r10, %r10		# val <= 0?
+	jle EleFourCheck
+	iaddq 1, %rax		# count++ #conditional addq?
+EleFourCheck:	
+	andq %r11, %r11		# val <= 0?
+	jle EleFiveCheck
+	iaddq 1, %rax		# count++ #conditional addq?
+EleFiveCheck:	
+	andq %r12, %r12		# val <= 0?
+	jle EleSixCheck
+	iaddq 1, %rax		# count++ #conditional addq?
+EleSixCheck:	
+	andq %r13, %r13		# val <= 0?
+	jle EleSevenCheck
+	iaddq 1, %rax		# count++ #conditional addq?
+EleSevenCheck:	
+	andq %r14, %r14		# val <= 0?
+	jle EleEightCheck
+	iaddq 1, %rax		# count++ #conditional addq?
+EleEightCheck:	
+	andq %rbx, %rbx		# val <= 0?
+	jle EndLoop
+	iaddq 1, %rax		# count++ #conditional addq?
+EndLoop:
+	andq %rdx, %rdx # len > 0?
+	jg Loop
+LastElements:
+	iaddq 7, %rdx #add limit offset to limit
+	andq %rdx, %rdx 
+	je Done	#if limit is 0, means there are #if limit is 0, means there are no elements left (len is multiple of unroll factor)no elements left (len is multiple of unroll factor)
+	irmovq JumpTable, %rbx
+CounterLoop:
+	iaddq 8, %rbx #increment jumptable ptr 
+	iaddq -1, %rdx #decrement limit
+	andq %rdx, %rdx #if limit is 0, means there are no elements left (len is multiple of unroll factor)
+	jg CounterLoop
+	mrmovq (%rbx), %rbx
+	pushq %rbx
+	ret
+
+#LengthLoop:
+#	mrmovq (%rdi), %r10	# read val from src...
+#	iaddq -1, %rdx
+#	rmmovq %r10, (%rsi)	# ...and store it to dst
+#	iaddq 8, %rdi
+#	iaddq 8, %rsi
+#	andq %r10, %r10		# val <= 0?
+#	jle NPos			# if so, goto NPos: 
+#	iaddq 1, %rax		# count++ #conditional addq?
+#NPos:
+#	andq %rdx, %rdx
+#	jg LengthLoop
+	
+.align 8
+JumpTable:
+	.quad None
+	.quad OneE
+	.quad TwoE
+	.quad ThreeE
+	.quad FourE
+	.quad FiveE
+	.quad SixE
+	.quad SevenE
+None:
+OneE:
+	mrmovq (%rdi), %r8	# read val from src...
+	andq %r8, %r8
+	rmmovq %r8, (%rsi)	# ...and store it to dst
+	jle Done
+	iaddq 1, %rax
+	jmp Done
+TwoE:
+	mrmovq (%rdi), %r8	# read val from src...
+	mrmovq 8(%rdi), %r9	# read val from src...
+	rmmovq %r8, (%rsi)	# ...and store it to dst
+	rmmovq %r9, 8(%rsi)# ...and store it to dst
+	andq %r8, %r8		# val <= 0?
+	jle TwoETwoElementCheck		# if so, goto Npos: 
+	iaddq 1, %rax		# count++ #conditional addq?
+TwoETwoElementCheck:	
+	andq %r9, %r9		# val <= 0?
+	jle Done
+	iaddq 1, %rax		# count++ #conditional addq?
+	jmp Done
+ThreeE:
+	mrmovq (%rdi), %r8	# read val from src...
+	mrmovq 8(%rdi), %r9	# read val from src...
+	mrmovq 16(%rdi), %r10	# read val from src...
+	rmmovq %r8, (%rsi)	# ...and store it to dst
+	rmmovq %r9, 8(%rsi)# ...and store it to dst
+	rmmovq %r10, 16(%rsi)# ...and store it to dst
+	andq %r8, %r8		# val <= 0?
+	jle ThreeEleTwoCheck		# if so, goto Npos: 
+	iaddq 1, %rax		# count++ #conditional addq?
+ThreeEleTwoCheck:	
+	andq %r9, %r9		# val <= 0?
+	jle ThreeEleThreeCheck
+	iaddq 1, %rax		# count++ #conditional addq?
+ThreeEleThreeCheck:	
+	andq %r10, %r10		# val <= 0?
+	jle Done
+	iaddq 1, %rax		# count++ #conditional addq?
+FourE:
+	mrmovq (%rdi), %r8	# read val from src...
+	mrmovq 8(%rdi), %r9	# read val from src...
+	mrmovq 16(%rdi), %r10	# read val from src...
+	mrmovq 24(%rdi), %r11	# read val from src...
+	rmmovq %r8, (%rsi)	# ...and store it to dst
+	rmmovq %r9, 8(%rsi)# ...and store it to dst
+	rmmovq %r10, 16(%rsi)# ...and store it to dst
+	rmmovq %r11, 24(%rsi)# ...and store it to dst
+	andq %r8, %r8		# val <= 0?
+	jle FourEleTwoCheck		# if so, goto Npos: 
+	iaddq 1, %rax		# count++ #conditional addq?
+FourEleTwoCheck:	
+	andq %r9, %r9		# val <= 0?
+	jle FourEleThreeCheck
+	iaddq 1, %rax		# count++ #conditional addq?
+FourEleThreeCheck:	
+	andq %r10, %r10		# val <= 0?
+	jle FourEleFourCheck
+	iaddq 1, %rax		# count++ #conditional addq?
+FourEleFourCheck:	
+	andq %r11, %r11		# val <= 0?
+	jle Done
+	iaddq 1, %rax		# count++ #conditional addq?
+FiveE:
+	mrmovq (%rdi), %r8	# read val from src...
+	mrmovq 8(%rdi), %r9	# read val from src...
+	mrmovq 16(%rdi), %r10	# read val from src...
+	mrmovq 24(%rdi), %r11	# read val from src...
+	mrmovq 32(%rdi), %r12	# read val from src...
+	rmmovq %r8, (%rsi)	# ...and store it to dst
+	rmmovq %r9, 8(%rsi)# ...and store it to dst
+	rmmovq %r10, 16(%rsi)# ...and store it to dst
+	rmmovq %r11, 24(%rsi)# ...and store it to dst
+	rmmovq %r12, 32(%rsi)# ...and store it to dst
+	andq %r8, %r8		# val <= 0?
+	jle FiveEleTwoCheck		# if so, goto Npos: 
+	iaddq 1, %rax		# count++ #conditional addq?
+FiveEleTwoCheck:	
+	andq %r9, %r9		# val <= 0?
+	jle FiveEleThreeCheck
+	iaddq 1, %rax		# count++ #conditional addq?
+FiveEleThreeCheck:	
+	andq %r10, %r10		# val <= 0?
+	jle FiveEleFourCheck
+	iaddq 1, %rax		# count++ #conditional addq?
+FiveEleFourCheck:	
+	andq %r11, %r11		# val <= 0?
+	jle FiveEleFiveCheck
+	iaddq 1, %rax		# count++ #conditional addq?
+FiveEleFiveCheck:	
+	andq %r12, %r12		# val <= 0?
+	jle Done
+	iaddq 1, %rax		# count++ #conditional addq?
+SixE:
+	mrmovq (%rdi), %r8	# read val from src...
+	mrmovq 8(%rdi), %r9	# read val from src...
+	mrmovq 16(%rdi), %r10	# read val from src...
+	mrmovq 24(%rdi), %r11	# read val from src...
+	mrmovq 32(%rdi), %r12	# read val from src...
+	mrmovq 40(%rdi), %r13	# read val from src...
+	mrmovq 48(%rdi), %r14	# read val from src...
+	rmmovq %r8, (%rsi)	# ...and store it to dst
+	rmmovq %r9, 8(%rsi)# ...and store it to dst
+	rmmovq %r10, 16(%rsi)# ...and store it to dst
+	rmmovq %r11, 24(%rsi)# ...and store it to dst
+	rmmovq %r12, 32(%rsi)# ...and store it to dst
+	rmmovq %r13, 40(%rsi)# ...and store it to dst
+	andq %r8, %r8		# val <= 0?
+	jle SixEleTwoCheck		# if so, goto Npos: 
+	iaddq 1, %rax		# count++ #conditional addq?
+SixEleTwoCheck:	
+	andq %r9, %r9		# val <= 0?
+	jle SixEleThreeCheck
+	iaddq 1, %rax		# count++ #conditional addq?
+SixEleThreeCheck:	
+	andq %r10, %r10		# val <= 0?
+	jle SixEleFourCheck
+	iaddq 1, %rax		# count++ #conditional addq?
+SixEleFourCheck:	
+	andq %r11, %r11		# val <= 0?
+	jle SixEleFiveCheck
+	iaddq 1, %rax		# count++ #conditional addq?
+SixEleFiveCheck:	
+	andq %r12, %r12		# val <= 0?
+	jle SixEleSixCheck
+	iaddq 1, %rax		# count++ #conditional addq?
+SixEleSixCheck:	
+	andq %r13, %r13		# val <= 0?
+	jle Done
+	iaddq 1, %rax		# count++ #conditional addq?
+SevenE:
+
+
+#Went over 1000 byte limit RIP, possibly keep loop unroll to two at a time?
+
+#one more idea for jump table with leftover elements, try incrementing a counter until limit is 0,
+#counter + PC is where the jump table should go
+	#not sure how efficient this will be for low amount of elements 
+	#but should be able to get rid of checks at end
+
+##################################################################
+# Do not modify the following section of code
+# Function epilogue.
+Done:
+	ret
+##################################################################
+# Keep the following label at the end of your function
+End:
+#/* $end ncopy-ys */

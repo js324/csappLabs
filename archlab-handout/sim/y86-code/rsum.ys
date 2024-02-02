@@ -1,0 +1,34 @@
+
+
+irmovq stack, %rsp
+call main
+halt
+.align 8
+ele1:
+    .quad 0x00a
+    .quad ele2
+ele2:
+    .quad 0x0b0
+    .quad ele3
+ele3:
+    .quad 0xc00
+    .quad 0
+main:
+    irmovq ele1, %rdi #ptr
+    jmp rsum_list
+rsum_list:
+        andq %rdi, %rdi    # ptr1-1 ptr2-2 ptr3-3
+        je true         #if ptr is null (0)
+        mrmovq (%rdi), %rbx
+        pushq %rbx
+        mrmovq 8(%rdi), %rdi #takes register val + 8 = address to read from mem
+        call rsum_list
+        popq %rbx
+        addq %rbx, %rax
+        ret
+    true:
+        irmovq 0, %rax
+        ret
+
+.pos 0xF00
+stack:
